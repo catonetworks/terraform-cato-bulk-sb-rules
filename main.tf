@@ -196,6 +196,18 @@ locals {
   }
 }
 
+# Safety guard: fail planning if the decoded JSON has 0 rules, unless the
+# caller explicitly opts in via allow_empty_policy. Protects against a
+# truncated/wrong-tenant export silently destroying every live rule.
+resource "terraform_data" "guard_empty_policy" {
+  lifecycle {
+    precondition {
+      condition     = var.allow_empty_policy || length(local.rules_by_name) > 0
+      error_message = "Policy JSON contains 0 rules. If intentional (greenfield/teardown), set allow_empty_policy = true. A truncated or wrong-tenant export would otherwise destroy the entire live policy."
+    }
+  }
+}
+
 # Optional account-level policy toggle.
 resource "cato_socket_bypass_policy" "policy" {
   count   = var.policy_enabled == null ? 0 : 1
