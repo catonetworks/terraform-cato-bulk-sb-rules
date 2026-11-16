@@ -51,8 +51,13 @@ locals {
       try(rw.rule.description, "") != "" ? { description = rw.rule.description } : {},
       try(rw.rule.action, null) != null ? {
         action = {
-          port          = try(rw.rule.action.port, "AUTOMATIC")
-          event_enabled = try(rw.rule.action.event.enabled, false)
+          port = try(rw.rule.action.port, "AUTOMATIC")
+          # Nested event { enabled } to match the cato_socket_bypass_rule schema
+          # (schemaResourceRuleActionEvent). A flat event_enabled does not conform
+          # -> "attribute action: attribute event is required".
+          event = {
+            enabled = try(rw.rule.action.event.enabled, false)
+          }
         }
       } : {},
       merge(
@@ -110,7 +115,7 @@ locals {
         } : {},
         try(length(rw.rule.service.simple), 0) > 0 || try(length(rw.rule.service.custom), 0) > 0 ? {
           service = merge(
-            try(length(rw.rule.service.simple), 0) > 0 ? { simple = [for s in rw.rule.service.simple : s.name] } : {},
+            try(length(rw.rule.service.simple), 0) > 0 ? { simple = [for s in rw.rule.service.simple : { name = s.name }] } : {},
             try(length(rw.rule.service.custom), 0) > 0 ? {
               custom = [for c in rw.rule.service.custom : merge(
                 { protocol = c.protocol },
@@ -179,7 +184,7 @@ locals {
             } : {},
             try(length(ex.service.simple), 0) > 0 || try(length(ex.service.custom), 0) > 0 ? {
               service = merge(
-                try(length(ex.service.simple), 0) > 0 ? { simple = [for s in ex.service.simple : s.name] } : {},
+                try(length(ex.service.simple), 0) > 0 ? { simple = [for s in ex.service.simple : { name = s.name }] } : {},
                 try(length(ex.service.custom), 0) > 0 ? {
                   custom = [for c in ex.service.custom : merge(
                     { protocol = c.protocol },
@@ -236,6 +241,10 @@ resource "cato_socket_bypass_rule" "rules" {
   }
 
   rule = local.rule_bodies[each.key]
+
+  lifecycle {
+    ignore_changes = [at] # create-only positioning; ordering owned by the move resource
+  }
 }
 
 # Ordering + republish on changes.

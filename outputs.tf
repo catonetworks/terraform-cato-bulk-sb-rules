@@ -13,7 +13,7 @@ output "section_ids" {
 
 output "rule_ids" {
   description = "Map of rule name to rule id."
-  value       = { for name, r in cato_socket_bypass_rule.rules : name => r.id }
+  value       = { for name, r in cato_socket_bypass_rule.rules : name => r.rule.id }
 }
 
 # Ordering rows the move resource cannot address (section_name "" - rules at
