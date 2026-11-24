@@ -34,7 +34,10 @@ locals {
       index_in_section = row.index_in_section
       section_name     = row.section_name
     }
-    if row.section_name != "" && contains(keys(local.sections_data), row.section_name)
+    # sectionless rows (section_name "") are included too: the provider orders
+    # them at the top of the policy. Excluding them left a flat policy (no
+    # sections) completely unordered.
+    if row.section_name == "" || contains(keys(local.sections_data), row.section_name)
   }
 
   unordered_rules_data = [
